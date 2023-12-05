@@ -16,6 +16,7 @@ export default function Home() {
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
+  console.log(messages);
 
   return (
     <main
@@ -35,7 +36,9 @@ export default function Home() {
                 <Person className="rounded-full w-10 h-10" />
               )}
             </div>
-            <div className="flex-1 font-normal text-sm">{message.content}</div>
+            <span className="flex-1 font-normal text-sm whitespace-pre-wrap">
+              {message.content}
+            </span>
           </div>
         ))}
       </div>
