@@ -1,9 +1,10 @@
 import { Inter } from "next/font/google";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Logo from "@/assets/logo.png";
 import Image from "next/image";
 import { IconButton } from "@mui/material";
 import { Person, Send } from "@mui/icons-material";
+import OpenAI from "openai";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -13,7 +14,17 @@ export default function Home() {
     { role: "user" | "assistant"; content: string }[]
   >([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [apiKey, setApiKey] = useState<string>("");
   const bottomRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    fetch("/api/apiKey", {
+      method: "GET",
+    }).then(async (res) => {
+      const json = await res.json();
+      setApiKey((json as { apiKey: string }).apiKey);
+    });
+  }, []);
 
   const onSubmit = async () => {
     if (isLoading || message.length == 0) return;
@@ -23,15 +34,25 @@ export default function Home() {
       content: message,
     });
     setMessage("");
-    const response = await fetch("/api/chat", {
-      method: "POST",
-      body: JSON.stringify({
-        messages: [...messages],
-      }),
+    const contextMessages: { role: "user" | "assistant"; content: string }[] =
+      [];
+    let contextLength = 0;
+    const newMessages = [...messages];
+    newMessages.reverse().forEach((message) => {
+      if (contextLength >= 31_150) return;
+      contextLength += message.content.length;
+      contextMessages.push(message);
+    });
+    const completion = await new OpenAI({
+      apiKey: apiKey,
+      dangerouslyAllowBrowser: true,
+    }).chat.completions.create({
+      messages: contextMessages.reverse(),
+      model: "gpt-4",
     });
     messages.push({
       role: "assistant",
-      content: ((await response.json()) as { answer: string })?.answer,
+      content: completion.choices[0].message.content ?? "",
     });
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
     setMessages([...messages]);
